@@ -1,0 +1,60 @@
+district_id,borough,borough_code,district_number,boro_cd,district_name
+MN01,Manhattan,1,1,101,"Financial District, Tribeca, Battery Park City"
+MN02,Manhattan,1,2,102,"Greenwich Village, SoHo"
+MN03,Manhattan,1,3,103,"Lower East Side, Chinatown"
+MN04,Manhattan,1,4,104,"Chelsea, Clinton"
+MN05,Manhattan,1,5,105,Midtown
+MN06,Manhattan,1,6,106,"Stuyvesant Town, Turtle Bay"
+MN07,Manhattan,1,7,107,Upper West Side
+MN08,Manhattan,1,8,108,Upper East Side
+MN09,Manhattan,1,9,109,"Morningside Heights, Hamilton Heights"
+MN10,Manhattan,1,10,110,Central Harlem
+MN11,Manhattan,1,11,111,East Harlem
+MN12,Manhattan,1,12,112,"Washington Heights, Inwood"
+BX01,Bronx,2,1,201,"Mott Haven, Melrose"
+BX02,Bronx,2,2,202,"Hunts Point, Longwood"
+BX03,Bronx,2,3,203,"Morrisania, Crotona"
+BX04,Bronx,2,4,204,"Highbridge, Concourse"
+BX05,Bronx,2,5,205,"Fordham, University Heights"
+BX06,Bronx,2,6,206,"Belmont, East Tremont"
+BX07,Bronx,2,7,207,"Kingsbridge Heights, Bedford Park"
+BX08,Bronx,2,8,208,"Riverdale, Fieldston"
+BX09,Bronx,2,9,209,"Parkchester, Soundview"
+BX10,Bronx,2,10,210,"Throgs Neck, Co-op City"
+BX11,Bronx,2,11,211,"Morris Park, Bronxdale"
+BX12,Bronx,2,12,212,"Williamsbridge, Baychester"
+BK01,Brooklyn,3,1,301,"Williamsburg, Greenpoint"
+BK02,Brooklyn,3,2,302,"Fort Greene, Brooklyn Heights"
+BK03,Brooklyn,3,3,303,Bedford-Stuyvesant
+BK04,Brooklyn,3,4,304,Bushwick
+BK05,Brooklyn,3,5,305,"East New York, Starrett City"
+BK06,Brooklyn,3,6,306,"Park Slope, Carroll Gardens"
+BK07,Brooklyn,3,7,307,"Sunset Park, Windsor Terrace"
+BK08,Brooklyn,3,8,308,"Crown Heights North, Prospect Heights"
+BK09,Brooklyn,3,9,309,"Crown Heights South, Prospect Lefferts Gardens"
+BK10,Brooklyn,3,10,310,"Bay Ridge, Dyker Heights"
+BK11,Brooklyn,3,11,311,"Bensonhurst, Bath Beach"
+BK12,Brooklyn,3,12,312,"Borough Park, Kensington"
+BK13,Brooklyn,3,13,313,"Coney Island, Brighton Beach"
+BK14,Brooklyn,3,14,314,"Flatbush, Midwood"
+BK15,Brooklyn,3,15,315,"Sheepshead Bay, Gerritsen Beach"
+BK16,Brooklyn,3,16,316,"Brownsville, Ocean Hill"
+BK17,Brooklyn,3,17,317,"East Flatbush, Farragut"
+BK18,Brooklyn,3,18,318,"Canarsie, Flatlands"
+QN01,Queens,4,1,401,"Astoria, Long Island City"
+QN02,Queens,4,2,402,"Sunnyside, Woodside"
+QN03,Queens,4,3,403,"Jackson Heights, North Corona"
+QN04,Queens,4,4,404,"Elmhurst, South Corona"
+QN05,Queens,4,5,405,"Ridgewood, Maspeth"
+QN06,Queens,4,6,406,"Forest Hills, Rego Park"
+QN07,Queens,4,7,407,"Flushing, Whitestone"
+QN08,Queens,4,8,408,"Hillcrest, Fresh Meadows"
+QN09,Queens,4,9,409,"Kew Gardens, Woodhaven"
+QN10,Queens,4,10,410,"South Ozone Park, Howard Beach"
+QN11,Queens,4,11,411,"Bayside, Little Neck"
+QN12,Queens,4,12,412,"Jamaica, Hollis"
+QN13,Queens,4,13,413,"Queens Village, Rosedale"
+QN14,Queens,4,14,414,"The Rockaways, Broad Channel"
+SI01,Staten Island,5,1,501,North Shore
+SI02,Staten Island,5,2,502,Mid-Island
+SI03,Staten Island,5,3,503,South Shore

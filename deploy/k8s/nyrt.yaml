@@ -1,0 +1,81 @@
+# AKS deployment: the ingestion service as a Deployment, the monthly pipeline as a CronJob.
+# Postgres is expected to be managed (Azure Database for PostgreSQL / AWS RDS); its DSN comes
+# from the nyrt-secrets Secret. Gold data lands on a persistent volume.
+#
+#   az aks get-credentials -g <rg> -n <cluster>
+#   kubectl create secret generic nyrt-secrets \
+#       --from-literal=NYRT_PG_DSN='postgresql://...' --from-literal=NYRT_SOCRATA_APP_TOKEN='...'
+#   kubectl apply -f deploy/k8s/nyrt.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nyrt-data
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: managed-csi
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyrt-ingest
+  labels: { app: nyrt-ingest }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: nyrt-ingest }
+  template:
+    metadata:
+      labels: { app: nyrt-ingest }
+    spec:
+      containers:
+        - name: ingest
+          image: ghcr.io/OWNER/ny-recycling-tracker:latest  # set by CI
+          args: ["serve", "--port", "8080"]
+          ports: [{ containerPort: 8080 }]
+          envFrom: [{ secretRef: { name: nyrt-secrets } }]
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyrt-ingest
+spec:
+  selector: { app: nyrt-ingest }
+  ports: [{ port: 80, targetPort: 8080 }]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nyrt-monthly
+spec:
+  schedule: "0 6 5 * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pipeline
+              image: ghcr.io/OWNER/ny-recycling-tracker:latest
+              args: ["run", "--incremental"]
+              envFrom: [{ secretRef: { name: nyrt-secrets } }]
+              env:
+                - { name: NYRT_INGEST_URL, value: "http://nyrt-ingest" }
+                - { name: NYRT_DATA_DIR, value: /data }
+              volumeMounts: [{ name: data, mountPath: /data }]
+              resources:
+                requests: { cpu: 250m, memory: 1Gi }
+                limits: { cpu: "1", memory: 2Gi }
+          volumes:
+            - name: data
+              persistentVolumeClaim: { claimName: nyrt-data }

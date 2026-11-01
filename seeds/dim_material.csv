@@ -1,0 +1,5 @@
+material,stream,is_diverted,is_recyclable,description
+refuse,refuse,false,false,Curbside refuse (trash) sent to landfill or waste-to-energy
+paper,recyclable,true,true,Curbside paper and cardboard recycling
+mgp,recyclable,true,true,"Curbside metal, glass, plastic and cartons recycling"
+organics,organics,true,false,"Curbside and school organics, leaves and Christmas trees"

@@ -1,0 +1,9 @@
+source_column,material
+refusetonscollected,refuse
+papertonscollected,paper
+mgptonscollected,mgp
+resorganicstons,organics
+schoolorganictons,organics
+leavesorganictons,organics
+xmastreetons,organics
+otherorganicstons,organics
