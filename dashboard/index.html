@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NY Recycling Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --seq-light: #86b6ef; --warn-bg: #fff4d6; --warn-ink: #5c4200; --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --seq-light: #184f95; --warn-bg: #3a2f10; --warn-ink: #fab219;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --seq-light: #184f95; --warn-bg: #3a2f10; --warn-ink: #fab219;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 0 0 4px; }
+.sub, .note { color: var(--ink-2); }
+.note { font-size: 13px; }
+.banner { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px; padding: 10px 14px;
+  margin: 16px 0; font-weight: 500; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); gap: 16px;
+  margin-top: 16px; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.panel.wide { grid-column: 1 / -1; }
+.finding { font-weight: 600; margin: 8px 0 2px; }
+.rec { color: var(--ink-2); margin: 0 0 12px; }
+.chart { position: relative; height: 320px; }
+.chart.tall { height: 900px; }
+.hero { font-size: 44px; font-weight: 700; line-height: 1.1; margin: 8px 0 0; }
+.hero-range { color: var(--ink-2); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--grid); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+select { font: inherit; padding: 4px 8px; border-radius: 6px; border: 1px solid var(--axis);
+  background: var(--surface); color: var(--ink); max-width: 100%; }
+details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; margin-top: 8px; }
+.empty { color: var(--muted); padding: 40px 0; text-align: center; }
+a { color: var(--s1); }
+</style>
+</head>
+<body>
+<main>
+  <h1>NY Recycling Tracker</h1>
+  <p class="sub" id="meta">Loading…</p>
+  <div id="banner"></div>
+
+  <div class="grid">
+    <section class="panel wide" id="p-gap">
+      <h2>4 · Diversion opportunity</h2>
+      <p class="finding" id="gap-finding"></p>
+      <p class="rec" id="gap-rec"></p>
+      <div class="hero" id="gap-hero"></div>
+      <div class="hero-range" id="gap-range"></div>
+      <div class="chart"><canvas id="c-gap" aria-label="Diversion gap by district"></canvas></div>
+      <details><summary>Table view</summary><div id="t-gap"></div></details>
+    </section>
+
+    <section class="panel wide" id="p-rank">
+      <h2>1 · Ranking</h2>
+      <p class="finding" id="rank-finding"></p>
+      <p class="rec" id="rank-rec"></p>
+      <div class="chart tall"><canvas id="c-rank" aria-label="Districts ranked by 12-month diversion rate"></canvas></div>
+      <details><summary>Most improved and most slipping (year over year)</summary><div id="t-movers"></div></details>
+      <details><summary>Districts left out of the ranking</summary><div id="t-excl"></div></details>
+    </section>
+
+    <section class="panel">
+      <h2>Borough trend</h2>
+      <p class="note">Monthly recycling rate without organics, complete districts only.</p>
+      <div class="chart"><canvas id="c-boro" aria-label="Borough recycling rate over time"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <h2>3 · Seasonality</h2>
+      <p class="finding" id="season-finding"></p>
+      <p class="rec" id="season-rec"></p>
+      <div class="chart"><canvas id="c-season" aria-label="Seasonal index by month"></canvas></div>
+      <p class="note" id="season-method"></p>
+    </section>
+
+    <section class="panel">
+      <h2>2 · Contamination (modeled)</h2>
+      <p class="finding" id="cont-finding"></p>
+      <p class="rec" id="cont-rec"></p>
+      <div class="chart" id="cont-chart"><canvas id="c-cont" aria-label="Estimated contamination by material"></canvas></div>
+      <p class="note">Modeled from citywide recovery rates by material, not measured per district.
+        Per-district differences in contamination are not modeled.</p>
+      <details><summary>Recovery rates and sources</summary><div id="t-rates"></div></details>
+    </section>
+
+    <section class="panel">
+      <h2>District drill-down</h2>
+      <select id="district" aria-label="Choose a district"></select>
+      <div class="chart"><canvas id="c-district" aria-label="District monthly rates"></canvas></div>
+    </section>
+  </div>
+  <p class="note" id="footer"></p>
+</main>
+<script>
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pct = (v, d = 1) => v == null ? "–" : (v * 100).toFixed(d) + "%";
+const tons = v => v == null ? "–" : Math.round(v).toLocaleString("en-US");
+const monthLabel = m => new Date(m + "T00:00:00Z").toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+const BOROUGHS = ["Manhattan", "Bronx", "Brooklyn", "Queens", "Staten Island"];
+const boroColor = b => css("--s" + (BOROUGHS.indexOf(b) + 1));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function table(el, cols, rows) {
+  if (!rows.length) { el.innerHTML = '<p class="note">None.</p>'; return; }
+  el.innerHTML = "<table><thead><tr>" + cols.map(c => `<th class="${c.num ? "num" : ""}">${esc(c.h)}</th>`).join("") +
+    "</tr></thead><tbody>" + rows.map(r => "<tr>" + cols.map(c => `<td class="${c.num ? "num" : ""}">${esc(c.f(r))}</td>`).join("") + "</tr>").join("") +
+    "</tbody></table>";
+}
+
+function baseOptions(extra = {}) {
+  const grid = css("--grid"), muted = css("--muted");
+  return {
+    responsive: true, maintainAspectRatio: false, animation: false,
+    interaction: { mode: "nearest", intersect: false },
+    plugins: { legend: { display: false, labels: { color: css("--ink-2"), usePointStyle: true, boxWidth: 8 } },
+      tooltip: { backgroundColor: css("--surface"), titleColor: css("--ink"), bodyColor: css("--ink-2"),
+        borderColor: css("--axis"), borderWidth: 1 } },
+    scales: {
+      x: { grid: { display: false }, border: { color: css("--axis") }, ticks: { color: muted } },
+      y: { grid: { color: grid }, border: { display: false }, ticks: { color: muted } },
+    },
+    ...extra,
+  };
+}
+
+async function load(name) {
+  const r = await fetch(`data/${name}.json`, { cache: "no-store" });
+  if (!r.ok) throw new Error(name);
+  return r.json();
+}
+
+async function main() {
+  let d;
+  try {
+    const names = ["summary", "ranking", "ranking_exclusions", "borough_trend", "district_month",
+      "contamination", "seasonal_index", "seasonality_test", "diversion_gap"];
+    d = Object.fromEntries(await Promise.all(names.map(async n => [n, await load(n)])));
+  } catch (e) {
+    document.getElementById("meta").textContent =
+      "No data yet. Run `nyrt run` to build the warehouse and export the dashboard data.";
+    return;
+  }
+  const s = d.summary;
+  const live = s.extract && s.extract.query && s.extract.query.url;
+  document.getElementById("meta").textContent =
+    `${s.source}. Data from ${monthLabel(s.data_window.first_month)} to ${monthLabel(s.data_window.last_month)}; ` +
+    `rankings use the 12 months to ${monthLabel(s.ranking_month)}.`;
+  if (!live) {
+    const src = s.extract && s.extract.query ? (s.extract.query.file || "unknown") : "unknown";
+    document.getElementById("banner").innerHTML =
+      `<div class="banner">This build did not come from the live NYC Open Data API (source: ${esc(src)}). ` +
+      `If that file is the synthetic test fixture, none of these figures are real findings.</div>`;
+  }
+
+  // 4 · Diversion gap
+  const h = s.headline;
+  const gap = d.diversion_gap;
+  document.getElementById("gap-hero").textContent = h ? `${tons(h.gap_tons_collected)} tons a year` : "–";
+  document.getElementById("gap-range").textContent = h && h.gap_tons_recovered_base != null
+    ? `would move from refuse into paper and MGP collection; of that, an estimated ${tons(h.gap_tons_recovered_base)} tons ` +
+      `would be recovered (range ${tons(h.gap_tons_recovered_low)}–${tons(h.gap_tons_recovered_high)}).`
+    : "would move from refuse into paper and MGP collection (collected tons). The recovered-tons range appears once paper and MGP recovery rates are verified.";
+  if (gap.length) {
+    const top = gap.slice(0, 10);
+    const share = top.reduce((a, r) => a + r.gap_tons, 0) / gap.reduce((a, r) => a + r.gap_tons, 0);
+    document.getElementById("gap-finding").textContent =
+      `If every district reached the top-quartile recycling rate of its borough, about ${tons(h.gap_tons_collected)} more tons a year ` +
+      `would be collected as recycling instead of refuse. The 10 largest gaps hold ${pct(share, 0)} of it.`;
+    document.getElementById("gap-rec").textContent =
+      `Recommendation: focus outreach budget on ${top.slice(0, 3).map(r => `${r.district_id} (${r.district_name})`).join(", ")} first.`;
+    new Chart(document.getElementById("c-gap"), {
+      type: "bar",
+      data: { labels: top.map(r => r.district_id),
+        datasets: [{ data: top.map(r => r.gap_tons), backgroundColor: css("--s1"), borderRadius: 4, maxBarThickness: 36 }] },
+      options: baseOptions({ plugins: { ...baseOptions().plugins, tooltip: { ...baseOptions().plugins.tooltip,
+        callbacks: { title: i => `${top[i[0].dataIndex].district_id} · ${top[i[0].dataIndex].district_name}`,
+          label: i => { const r = top[i.dataIndex]; return [`Gap: ${tons(r.gap_tons)} tons/yr`, `Rate ${pct(r.rate)} vs benchmark ${pct(r.benchmark_rate)}`]; } } } } }),
+    });
+    table(document.getElementById("t-gap"), [
+      { h: "District", f: r => `${r.district_id} ${r.district_name}` }, { h: "Borough", f: r => r.borough },
+      { h: "Rate", f: r => pct(r.rate), num: 1 }, { h: "Benchmark", f: r => pct(r.benchmark_rate), num: 1 },
+      { h: "Gap (tons/yr)", f: r => tons(r.gap_tons), num: 1 }], gap);
+  }
+
+  // 1 · Ranking
+  const rank = d.ranking;
+  if (rank.length) {
+    const best = rank[0], worst = rank[rank.length - 1];
+    document.getElementById("rank-finding").textContent =
+      `${best.district_id} (${best.district_name}) leads at ${pct(best.rolling_diversion_rate)} of waste diverted; ` +
+      `${worst.district_id} (${worst.district_name}) is last at ${pct(worst.rolling_diversion_rate)}.`;
+    const withYoy = rank.filter(r => r.yoy_change_diversion != null);
+    const slipping = [...withYoy].sort((a, b) => a.yoy_change_diversion - b.yoy_change_diversion);
+    document.getElementById("rank-rec").textContent = slipping.length && slipping[0].yoy_change_diversion < 0
+      ? `Recommendation: look at what changed in ${slipping[0].district_id}, which slipped most (${(slipping[0].yoy_change_diversion * 100).toFixed(1)} points year over year).`
+      : "No district slipped year over year.";
+    new Chart(document.getElementById("c-rank"), {
+      type: "bar",
+      data: { labels: rank.map(r => r.district_id),
+        datasets: [{ data: rank.map(r => r.rolling_diversion_rate), backgroundColor: rank.map(r => boroColor(r.borough)),
+          borderRadius: 4, barPercentage: 0.8, categoryPercentage: 0.9 }] },
+      options: baseOptions({ indexAxis: "y",
+        scales: { x: { grid: { color: css("--grid") }, border: { display: false }, ticks: { color: css("--muted"), callback: v => pct(v, 0) } },
+          y: { grid: { display: false }, ticks: { color: css("--muted"), autoSkip: false, font: { size: 11 } } } },
+        plugins: { ...baseOptions().plugins,
+          legend: { display: true, position: "top", labels: { color: css("--ink-2"), boxWidth: 10,
+            generateLabels: () => BOROUGHS.map(b => ({ text: b, fillStyle: boroColor(b), strokeStyle: boroColor(b), fontColor: css("--ink-2") })) },
+            onClick: null },
+          tooltip: { ...baseOptions().plugins.tooltip, callbacks: {
+            title: i => `${rank[i[0].dataIndex].district_id} · ${rank[i[0].dataIndex].district_name}`,
+            label: i => { const r = rank[i.dataIndex]; return [`Diversion rate: ${pct(r.rolling_diversion_rate)} (city #${r.city_rank}, ${r.borough} #${r.borough_rank})`,
+              `Without organics: ${pct(r.rolling_recycling_rate_core)}`,
+              `YoY: ${r.yoy_change_diversion == null ? "–" : (r.yoy_change_diversion * 100).toFixed(1) + " pts"}`]; } } } } }),
+    });
+    const movers = [...withYoy].sort((a, b) => b.yoy_change_diversion - a.yoy_change_diversion);
+    const mv = [...movers.slice(0, 5), ...movers.slice(-5).reverse()];
+    table(document.getElementById("t-movers"), [
+      { h: "District", f: r => `${r.district_id} ${r.district_name}` },
+      { h: "Rate", f: r => pct(r.rolling_diversion_rate), num: 1 },
+      { h: "YoY (pts)", f: r => (r.yoy_change_diversion * 100).toFixed(1), num: 1 }], mv);
+  }
+  table(document.getElementById("t-excl"), [
+    { h: "District", f: r => `${r.district_id} ${r.district_name}` },
+    { h: "Complete months in window", f: r => r.complete_months_in_window, num: 1 },
+    { h: "Issues", f: r => r.issues || "missing months" }], d.ranking_exclusions);
+
+  // Borough trend
+  const bt = d.borough_trend;
+  const months = [...new Set(bt.map(r => r.month))].sort();
+  new Chart(document.getElementById("c-boro"), {
+    type: "line",
+    data: { labels: months.map(monthLabel), datasets: BOROUGHS.map(b => {
+      const by = Object.fromEntries(bt.filter(r => r.borough === b).map(r => [r.month, r.recycling_rate_core]));
+      return { label: b, data: months.map(m => by[m] ?? null), borderColor: boroColor(b), backgroundColor: boroColor(b),
+        borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, spanGaps: false };
+    }) },
+    options: baseOptions({ interaction: { mode: "index", intersect: false },
+      plugins: { ...baseOptions().plugins, legend: { display: true, position: "top", labels: { color: css("--ink-2"), boxWidth: 10 } },
+        tooltip: { ...baseOptions().plugins.tooltip, callbacks: { label: i => `${i.dataset.label}: ${pct(i.raw)}` } } },
+      scales: { x: { grid: { display: false }, ticks: { color: css("--muted"), maxTicksLimit: 8 } },
+        y: { grid: { color: css("--grid") }, border: { display: false }, ticks: { color: css("--muted"), callback: v => pct(v, 1) } } } }),
+  });
+
+  // 3 · Seasonality
+  const si = d.seasonal_index, st = d.seasonality_test.recycling_rate_core;
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  if (si.length) {
+    const lo = si.reduce((a, r) => r.seasonal_index_core < a.seasonal_index_core ? r : a);
+    const hi = si.reduce((a, r) => r.seasonal_index_core > a.seasonal_index_core ? r : a);
+    const sig = st.status === "ok" && st.p_value < 0.05;
+    document.getElementById("season-finding").textContent = st.status !== "ok"
+      ? "Not enough complete years to test for seasonality yet."
+      : `${sig ? "Recycling is seasonal" : "No significant seasonal pattern"} (F = ${st.f_stat.toFixed(1)}, p ${st.p_value < 0.001 ? "< 0.001" : "= " + st.p_value.toFixed(3)}): ` +
+        `${MONTHS[lo.month_of_year - 1]} runs ${((1 - lo.seasonal_index_core) * 100).toFixed(1)}% below the annual average, ${MONTHS[hi.month_of_year - 1]} ${((hi.seasonal_index_core - 1) * 100).toFixed(1)}% above.`;
+    document.getElementById("season-rec").textContent = sig
+      ? `Recommendation: time outreach for the weeks before ${MONTHS[lo.month_of_year - 1]}.` : "";
+    new Chart(document.getElementById("c-season"), {
+      type: "bar",
+      data: { labels: si.map(r => MONTHS[r.month_of_year - 1]),
+        datasets: [{ data: si.map(r => r.seasonal_index_core - 1), backgroundColor: si.map(r => r.seasonal_index_core < 1 ? css("--s2") : css("--s1")), borderRadius: 4, maxBarThickness: 28 }] },
+      options: baseOptions({ plugins: { ...baseOptions().plugins, tooltip: { ...baseOptions().plugins.tooltip,
+        callbacks: { label: i => `${(i.raw * 100).toFixed(1)}% vs annual average (${si[i.dataIndex].years} years)` } } },
+        scales: { x: { grid: { display: false }, ticks: { color: css("--muted") } },
+          y: { grid: { color: css("--grid") }, border: { display: false }, ticks: { color: css("--muted"), callback: v => (v * 100).toFixed(0) + "%" } } } }),
+    });
+    document.getElementById("season-method").textContent = st.status === "ok"
+      ? `Bars: seasonal index minus 1, recycling rate without organics. Test: ${st.method} (n = ${st.n}, ${st.districts} districts).` : "";
+  }
+
+  // 2 · Contamination
+  const rates = s.recovery_rates;
+  table(document.getElementById("t-rates"), [
+    { h: "Material", f: r => r.material }, { h: "Low / base / high", f: r => r.recovery_base == null ? "not set" : `${pct(r.recovery_low, 0)} / ${pct(r.recovery_base, 0)} / ${pct(r.recovery_high, 0)}` },
+    { h: "Verified", f: r => r.verified ? "yes" : "no" }, { h: "Used", f: r => r.used_in_estimates ? "yes" : "no" },
+    { h: "Source", f: r => r.source_title }], rates);
+  const lastYear = Math.max(...d.contamination.map(r => r.year));
+  const cont = d.contamination.filter(r => r.year === lastYear && r.contamination_base != null);
+  if (!cont.length) {
+    document.getElementById("cont-chart").innerHTML = '<p class="empty">No verified recovery rates yet, so contamination is not estimated. See the rates table below.</p>';
+    document.getElementById("cont-finding").textContent = "Contamination panel is off until a cited recovery rate is verified.";
+  } else {
+    const top = cont.reduce((a, r) => r.contamination_base > a.contamination_base ? r : a);
+    document.getElementById("cont-finding").textContent =
+      `In ${lastYear}, an estimated ${tons(top.contamination_base)} tons of ${top.material.toUpperCase()} (range ${tons(top.contamination_low)}–${tons(top.contamination_high)}) were collected as recycling but not recovered.`;
+    document.getElementById("cont-rec").textContent = `Recommendation: target ${top.material.toUpperCase()} sorting guidance first.`;
+    new Chart(document.getElementById("c-cont"), {
+      type: "bar",
+      data: { labels: cont.map(r => r.material.toUpperCase()), datasets: [
+        { label: "Base estimate", data: cont.map(r => r.contamination_base), backgroundColor: css("--s1"), borderRadius: 4, maxBarThickness: 48 }] },
+      options: baseOptions({ plugins: { ...baseOptions().plugins, tooltip: { ...baseOptions().plugins.tooltip,
+        callbacks: { label: i => { const r = cont[i.dataIndex]; return [`Base: ${tons(r.contamination_base)} tons`, `Range: ${tons(r.contamination_low)}–${tons(r.contamination_high)}`]; } } } } }),
+    });
+  }
+
+  // Drill-down
+  const dm = d.district_month;
+  const ids = [...new Set(dm.map(r => r.district_id))];
+  const sel = document.getElementById("district");
+  sel.innerHTML = ids.map(id => { const r = dm.find(x => x.district_id === id); return `<option value="${id}">${id} · ${esc(r.district_name)}</option>`; }).join("");
+  let dchart;
+  const draw = id => {
+    const rows = dm.filter(r => r.district_id === id);
+    dchart && dchart.destroy();
+    dchart = new Chart(document.getElementById("c-district"), {
+      type: "line",
+      data: { labels: rows.map(r => monthLabel(r.month)), datasets: [
+        { label: "Diversion rate (with organics)", data: rows.map(r => r.diversion_rate), borderColor: css("--s1"), backgroundColor: css("--s1"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 },
+        { label: "Recycling rate (no organics)", data: rows.map(r => r.recycling_rate_core), borderColor: css("--s2"), backgroundColor: css("--s2"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 }] },
+      options: baseOptions({ interaction: { mode: "index", intersect: false },
+        plugins: { ...baseOptions().plugins, legend: { display: true, position: "top", labels: { color: css("--ink-2"), boxWidth: 10 } },
+          tooltip: { ...baseOptions().plugins.tooltip, callbacks: { label: i => `${i.dataset.label}: ${pct(i.raw)}`,
+            afterBody: i => { const r = rows[i[0].dataIndex]; return r.is_complete ? "" : `Incomplete month: ${r.issues}`; } } } },
+        scales: { x: { grid: { display: false }, ticks: { color: css("--muted"), maxTicksLimit: 8 } },
+          y: { grid: { color: css("--grid") }, border: { display: false }, ticks: { color: css("--muted"), callback: v => pct(v, 1) } } } }),
+    });
+  };
+  sel.addEventListener("change", () => draw(sel.value));
+  draw(ids[0]);
+  document.getElementById("footer").textContent = `Generated ${s.generated_at}. Incomplete district-months are left out of rates and rankings.`;
+}
+main();
+</script>
+</body>
+</html>

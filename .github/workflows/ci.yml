@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nyrt
+          POSTGRES_PASSWORD: nyrt
+          POSTGRES_DB: nyrt
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nyrt" --health-interval 5s --health-retries 10
+    env:
+      NYRT_PG_DSN: postgresql://nyrt:nyrt@localhost:5432/nyrt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: pip install -e ".[dev,spark]"
+      - name: Lint
+        run: ruff check . && ruff format --check .
+      - name: Unit, Postgres and Spark parity tests
+        run: pytest -q
+      - name: Pipeline run on the synthetic sample
+        run: |
+          python -c "import sys; sys.path.insert(0, 'tests/fixtures'); import synthetic_dsny as s; from pathlib import Path; s.write_csv(Path('/tmp/sample.csv'), s.records())"
+          NYRT_DATA_DIR=/tmp/nyrt nyrt run --from-file /tmp/sample.csv
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t ny-recycling-tracker .
